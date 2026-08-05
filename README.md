@@ -45,6 +45,46 @@ curl -N http://127.0.0.1:8787/v1/chat/completions `
 - **按请求切模型**：`model` 支持 `glm-5.1`、`kimi-k2.5` 等（`GET /v1/models` 全列表）
 - **多轮**：客户端自己带历史 `messages` 即可，无需 session 管理
 
+### 工具调用（function calling）
+
+支持 OpenAI 风格工具调用——模型负责**选择工具并生成参数**，执行在客户端
+（Cherry Studio、NextChat 等自己执行工具，再把结果以 `role:"tool"` 回传）：
+
+```jsonc
+// 第一轮：声明工具，模型返回 tool_calls
+{
+  "model": "glm-5.1",
+  "tools": [{
+    "type": "function",
+    "function": {
+      "name": "get_weather",
+      "description": "查询指定城市的当前天气",
+      "parameters": {
+        "type": "object",
+        "properties": { "city": { "type": "string" } },
+        "required": ["city"]
+      }
+    }
+  }],
+  "messages": [{ "role": "user", "content": "查询北京今天的天气。" }]
+}
+// → finish_reason: "tool_calls"，message.tool_calls = [{id, function:{name:"get_weather", arguments:"{\"city\":\"北京\"}"}}]
+
+// 第二轮：带上工具执行结果，模型给出最终回答
+{
+  "messages": [
+    { "role": "user", "content": "查询北京今天的天气。" },
+    { "role": "assistant", "content": "", "tool_calls": [{ "id": "call_x1", "type": "function",
+        "function": { "name": "get_weather", "arguments": "{\"city\": \"北京\"}" } }] },
+    { "role": "tool", "tool_call_id": "call_x1", "content": "{\"temperature\":32,\"condition\":\"晴\"}" }
+  ]
+}
+// → 正常文本回答
+```
+
+流式同样支持：`delta.tool_calls` 分片透传（`arguments` 按 fragment 拼接）。
+`tool_choice` 可传 `"auto"` / `"required"` / `{type:"function", function:{name}}`。
+
 ## Claude Code / Anthropic 客户端接入（/v1/messages）
 
 提供 Anthropic Messages API 格式，Claude Code、Cline、Roo Code 等可直接对接：
@@ -68,6 +108,10 @@ curl -N http://127.0.0.1:8787/v1/messages `
 - `model` 里的 `claude-*` 会自动映射到默认模型（`WORKBUDDY2API_MODEL`，.env 默认 `glm-5.1`）
 - 流式返回标准 Anthropic SSE：`message_start` / `content_block_delta`（含 `thinking_delta` 思考）/
   `message_delta` / `message_stop`，Claude Code 可直接消费
+- **工具调用（tool use）**：`tools` 用 Anthropic 格式（`{name, description, input_schema}`）；
+  模型返回 `tool_use` 内容块（流式为 `content_block_start` + `input_json_delta`），
+  客户端执行后以 `tool_result` 块回传，`stop_reason` 为 `tool_use`。Claude Code
+  的 MCP 工具 / Bash / Read 等工具可直接使用
 
 ## 端点一览
 
