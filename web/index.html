@@ -369,10 +369,6 @@
     <div class="card">
       <div class="card-body">
         <div class="row">
-          <div style="flex:2"><label for="c_sysprompt">系统提示词</label>
-            <textarea id="c_sysprompt" rows="4" placeholder="You are a helpful AI assistant..."></textarea>
-            <div class="hint">覆盖内置 CodeBuddy 提示词；留空 = 用内置</div>
-          </div>
           <div style="flex:1">
             <label for="c_lb">负载均衡</label>
             <select id="c_lb">
@@ -380,7 +376,7 @@
               <option value="round-robin">round-robin · 轮流</option>
               <option value="least-loaded">least-loaded · 最闲</option>
             </select>
-            <div style="margin-top:14px"><button class="btn btn-primary" onclick="saveConfig()">保存并重启 CLI</button></div>
+            <div style="margin-top:14px"><button class="btn btn-primary" onclick="saveConfig()">保存</button></div>
           </div>
         </div>
       </div>
@@ -530,7 +526,6 @@ async function loadModels() {
 async function loadConfig() {
   try {
     const c = await API.req('GET', '/v1/config');
-    document.getElementById('c_sysprompt').value = c.systemPrompt || '';
     document.getElementById('c_lb').value = c.lb || 'first';
   } catch (e) { /* key not set */ }
 }
@@ -538,11 +533,9 @@ async function loadConfig() {
 async function saveConfig() {
   try {
     await API.req('POST', '/v1/config', {
-      systemPrompt: document.getElementById('c_sysprompt').value,
       lb: document.getElementById('c_lb').value,
     });
-    toast('已保存，CLI 重启中…');
-    setTimeout(loadAll, 1500);
+    toast('已保存');
   } catch (e) { toast(e.message, false); }
 }
 

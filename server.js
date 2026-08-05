@@ -87,7 +87,6 @@ const pool = new CliPool({
     cliBin: process.env.WORKBUDDY2API_CLI_BIN,
     model: process.env.WORKBUDDY2API_MODEL || null,
     effort: process.env.WORKBUDDY2API_EFFORT || null,
-    systemPrompt: process.env.WORKBUDDY2API_SYSTEM_PROMPT || null,
     extraArgs: process.env.WORKBUDDY2API_CLI_ARGS || '',
   },
 });
@@ -245,7 +244,6 @@ async function handleRequest(req, res) {
       return sendError(res, 400, 'BAD_REQUEST', e.message);
     }
     const patch = {};
-    if ('systemPrompt' in body) patch.WORKBUDDY2API_SYSTEM_PROMPT = body.systemPrompt;
     if ('model' in body) patch.WORKBUDDY2API_MODEL = body.model;
     if ('effort' in body) patch.WORKBUDDY2API_EFFORT = body.effort;
     if ('lb' in body) patch.WORKBUDDY2API_LB = body.lb;

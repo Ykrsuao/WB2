@@ -64,7 +64,6 @@ curl http://127.0.0.1:8787/v1/health \
 | `WORKBUDDY2API_API_KEY` | 空 | **必填**，客户端 Bearer 鉴权 |
 | `WORKBUDDY2API_MODEL` | `glm-5.1` | 默认模型 |
 | `WORKBUDDY2API_EFFORT` | `high` | 默认思考强度（minimal~max） |
-| `WORKBUDDY2API_SYSTEM_PROMPT` | 空 | 替换系统提示词（去掉品牌身份） |
 | `WORKBUDDY2API_LB` | `round-robin` | `first` / `round-robin` / `least-loaded` |
 | `WORKBUDDY2API_ENDPOINT` | `https://copilot.tencent.com` | 后端直连地址 |
 | `WORKBUDDY2API_ACCOUNTS_FILE` | `/data/accounts.json` | 账号文件（容器内固定，勿改） |

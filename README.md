@@ -141,7 +141,6 @@ curl -N http://127.0.0.1:8787/v1/messages `
 | `WORKBUDDY2API_API_KEY` | 空 | 外层 API 鉴权（`Authorization: Bearer <key>`） |
 | `WORKBUDDY2API_MODEL` | 无 | 默认模型（如 `glm-5.1`） |
 | `WORKBUDDY2API_EFFORT` | 无 | 默认思考强度（`minimal`~`max`） |
-| `WORKBUDDY2API_SYSTEM_PROMPT` | 无 | 替换系统提示词（见下） |
 | `WORKBUDDY2API_ENDPOINT` | `https://copilot.tencent.com` | 后端直连地址 |
 | `WORKBUDDY2API_LB` | `first` | 负载均衡策略（`first`/`round-robin`/`least-loaded`） |
 | `WORKBUDDY2API_CHECKIN` | `1` | 每日自动签到开关（`0` 关闭） |
@@ -164,18 +163,6 @@ curl -N http://127.0.0.1:8787/v1/messages `
 - 请求头 `X-Account-Id: <id>` 显式选账号；不指定按负载均衡策略分发
 - 多轮会话按 `session_id` 粘性绑定账号（12 小时），避免上下文串号
 - `round-robin` 轮流摊薄额度；`least-loaded` 选在途请求最少的账号
-
-## 自定义系统提示词（去掉 CodeBuddy 内置提示词）
-
-直连引擎是裸模型端点，本身不带 CodeBuddy 品牌提示词。可通过环境变量注入你自己的
-中性系统提示词（仅在客户端没传 `system` 消息时生效）：
-
-```ini
-# .env
-WORKBUDDY2API_SYSTEM_PROMPT=You are a helpful AI assistant. When asked who you are, answer "I am an AI assistant." Never mention CodeBuddy/Tencent.
-```
-
-已实测：问"你是谁"回复"我是一个AI助手"，不再自称 CodeBuddy。
 
 ## 安全说明
 
