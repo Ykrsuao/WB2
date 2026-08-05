@@ -1,0 +1,23 @@
+# secrets
+.env
+accounts.json
+
+# extracted source / tools (reverse engineering artifacts)
+_src/
+_app_asar/
+_tools/
+codebuddy-api-openapi.json
+
+# test homes & local test artifacts (contain session tokens / keys)
+_acct_test_home/
+_login_test_home/
+test_thinking.py
+snake.html
+*.log
+
+# tool artifacts (MCP snapshots / templates)
+.playwright-mcp/
+.spec-workflow/
+
+# node
+node_modules/

@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>workbuddy2api · 管理面板</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ============ light, tabbed, tidy ============ */
+  :root {
+    --bg: #f6f8fb;
+    --surface: #FFFFFF;
+    --surface-2: #F1F5F9;
+    --surface-3: #E2E8F0;
+    --border: #E2E8F0;
+    --border-strong: #CBD5E1;
+    --text: #0F172A;
+    --text-2: #475569;
+    --text-3: #94A3B8;
+    --accent: #059669;
+    --accent-2: #10B981;
+    --accent-soft: rgba(5,150,105,.12);
+    --ok: #059669;
+    --ok-soft: rgba(5,150,105,.1);
+    --warn: #D97706;
+    --warn-soft: rgba(217,119,6,.1);
+    --danger: #DC2626;
+    --danger-soft: rgba(220,38,38,.1);
+    --radius: 12px;
+    --radius-sm: 8px;
+    --font: "Inter", -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+    --ease: cubic-bezier(.25,.7,.3,1);
+    --shadow: 0 1px 2px rgba(15,23,42,.05), 0 6px 20px -12px rgba(15,23,42,.12);
+    --glow: 0 0 14px rgba(5,150,105,.3);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font: 14px/1.6 var(--font); min-height: 100dvh; -webkit-font-smoothing: antialiased; }
+  ::selection { background: var(--accent); color: #fff; }
+
+  .wrap { max-width: 960px; margin: 0 auto; padding: 0 20px 60px; }
+
+  /* ============ top bar ============ */
+  header.top {
+    position: sticky; top: 0; z-index: 40;
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 0; margin-bottom: 16px;
+    backdrop-filter: blur(12px);
+    background: linear-gradient(to bottom, rgba(246,248,251,.92), rgba(246,248,251,.75));
+    border-bottom: 1px solid var(--border);
+  }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand .mark { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: linear-gradient(135deg, #10B981, #059669); color: #fff; box-shadow: var(--glow); }
+  .brand h1 { font-size: 15px; font-weight: 700; letter-spacing: -.3px; line-height: 1.15; }
+  .brand .sub { font-size: 9.5px; color: var(--text-3); font-family: var(--mono); letter-spacing: 1px; text-transform: uppercase; }
+  .spacer { flex: 1; }
+  .head-actions { display: flex; gap: 7px; align-items: center; }
+
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; border: 1px solid var(--border); color: var(--text-2); background: var(--surface); }
+  .badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); }
+  .badge.ok { color: var(--ok); border-color: rgba(5,150,105,.3); background: var(--ok-soft); }
+  .badge.ok .dot { background: var(--ok); animation: pulse 2s var(--ease) infinite; }
+  .badge.warn { color: var(--warn); border-color: rgba(217,119,6,.3); background: var(--warn-soft); }
+  .badge.warn .dot { background: var(--warn); }
+  .badge.err { color: var(--danger); border-color: rgba(220,38,38,.3); background: var(--danger-soft); }
+  .badge.err .dot { background: var(--danger); }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(5,150,105,.4);} 50% { box-shadow: 0 0 0 4px rgba(5,150,105,0);} }
+
+  .banner { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; padding: 10px 14px; border-radius: var(--radius-sm); background: var(--warn-soft); border: 1px solid rgba(217,119,6,.35); color: var(--warn); font-size: 13px; }
+  .banner button { margin-left: auto; }
+
+  /* ============ tabs ============ */
+  .tabs {
+    display: flex; gap: 4px; margin-bottom: 18px; padding: 4px;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius);
+    width: fit-content; max-width: 100%; overflow-x: auto;
+  }
+  .tab {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 8px 16px; border-radius: 9px; border: 0; cursor: pointer;
+    background: transparent; color: var(--text-2); font-size: 13px; font-weight: 600; font-family: inherit;
+    transition: background .15s var(--ease), color .15s var(--ease), box-shadow .15s var(--ease);
+    white-space: nowrap;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(15,23,42,.12); }
+  .tab.active svg { color: var(--accent); }
+  .tab svg { flex-shrink: 0; }
+
+  .tab-panel { display: none; animation: fadeIn .2s var(--ease); }
+  .tab-panel.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px);} to { opacity: 1; transform: none;} }
+
+  /* ============ cards ============ */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 16px; overflow: hidden; }
+  .card > .card-head { display: flex; align-items: center; gap: 8px; padding: 13px 16px 0; font-size: 12px; font-weight: 650; letter-spacing: .4px; color: var(--text-2); }
+  .card > .card-head .count { color: var(--text-3); font-weight: 500; margin-left: 2px; }
+  .card-body { padding: 13px 16px 16px; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 800px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  /* ============ table ============ */
+  .tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .tbl th { text-align: left; padding: 7px 10px; color: var(--text-3); font-size: 10.5px; font-weight: 600; letter-spacing: .8px; text-transform: uppercase; border-bottom: 1px solid var(--border); font-family: var(--mono); }
+  .tbl td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .tbl tr:last-child td { border-bottom: 0; }
+  .tbl tbody tr { transition: background .15s var(--ease); }
+  .tbl tbody tr:hover { background: var(--surface-2); }
+  .mono { font-family: var(--mono); font-size: 12px; }
+  .stat-line { display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; font-family: var(--mono); color: var(--text-2); }
+  .stat-line .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); }
+  .stat-line .dot.r { background: var(--ok); box-shadow: 0 0 6px rgba(5,150,105,.5); }
+  .stat-line .dot.s { background: var(--warn); }
+  .stat-line .dot.o { background: var(--danger); }
+
+  /* ============ forms ============ */
+  label { display: block; font-size: 11px; color: var(--text-2); margin: 12px 0 5px; font-weight: 600; }
+  input, select, textarea { width: 100%; background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 9px 11px; font-size: 13px; font-family: inherit; transition: border-color .15s var(--ease), box-shadow .15s var(--ease); }
+  input:hover, select:hover, textarea:hover { border-color: var(--text-3); }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  textarea { resize: vertical; line-height: 1.55; }
+  .row { display: flex; gap: 10px; }
+  .row > * { flex: 1; min-width: 0; }
+  .hint { font-size: 11px; color: var(--text-3); margin-top: 5px; }
+
+  /* ============ buttons ============ */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 38px; padding: 0 15px; border-radius: var(--radius-sm); font-size: 12.5px; font-weight: 600; font-family: inherit; cursor: pointer; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); transition: background .15s var(--ease), border-color .15s var(--ease), transform .1s var(--ease); user-select: none; }
+  .btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+  .btn:active { transform: translateY(1px); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+  .btn svg { flex-shrink: 0; }
+  .btn-primary { background: linear-gradient(135deg, #10B981, #059669); border-color: #059669; color: #fff; font-weight: 700; box-shadow: 0 2px 10px -4px rgba(5,150,105,.5); }
+  .btn-primary:hover { filter: brightness(1.06); }
+  .btn-ghost:hover { background: var(--surface-2); }
+  .btn-danger { color: var(--danger); border-color: rgba(220,38,38,.35); background: transparent; }
+  .btn-danger:hover { background: var(--danger-soft); }
+  .btn-sm { min-height: 30px; padding: 0 10px; font-size: 11px; }
+
+  /* ============ chat ============ */
+  .chat-toolbar { display: flex; gap: 10px; flex-wrap: wrap; }
+  .chat-toolbar > * { flex: 1; min-width: 130px; }
+  .out { margin-top: 12px; min-height: 320px; max-height: 55vh; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 15px; font-family: var(--mono); font-size: 12.5px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; overflow-y: auto; }
+  .think { color: var(--text-2); border-left: 3px solid var(--warn); padding-left: 12px; margin-bottom: 10px; font-style: italic; background: linear-gradient(to right, var(--warn-soft), transparent); border-radius: 0 6px 6px 0; }
+  .ans { color: var(--text); }
+  .empty { color: var(--text-3); text-align: center; padding: 24px 0; font-size: 13px; }
+  .spin { display: inline-block; width: 13px; height: 13px; border-radius: 50%; border: 2px solid var(--border-strong); border-top-color: var(--accent); animation: rot .8s linear infinite; vertical-align: -2px; margin-right: 7px; }
+  @keyframes rot { to { transform: rotate(360deg); } }
+  .cursor::after { content: "▍"; color: var(--accent); animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* ============ stats ============ */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+  @media (max-width: 640px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 13px 15px; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .stat-label { font-size: 10px; color: var(--text-3); letter-spacing: .8px; text-transform: uppercase; font-weight: 600; white-space: nowrap; }
+  .stat-num { font-family: var(--mono); font-size: 19px; font-weight: 600; line-height: 1; }
+  .stat-num.ok { color: var(--accent); }
+
+  /* ============ credits ============ */
+  .bar { margin-top: 9px; height: 8px; border-radius: 999px; background: var(--surface-3); border: 1px solid var(--border); overflow: hidden; }
+  .bar-fill { height: 100%; background: linear-gradient(90deg, #059669, #34D399); border-radius: 999px; transition: width .4s var(--ease); box-shadow: 0 0 8px rgba(5,150,105,.4); }
+  .res-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 7px 2px; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+  .res-row:last-child { border-bottom: 0; }
+
+  /* ============ login ============ */
+  .method-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .method-grid .btn { flex-direction: column; gap: 4px; padding: 12px 8px; min-height: 64px; font-size: 12px; }
+  .qr-wrap { margin-top: 12px; text-align: center; }
+  .qr-wrap img { border-radius: var(--radius-sm); border: 1px solid var(--border); box-shadow: var(--shadow); max-width: 200px; }
+  .link { color: var(--accent); text-decoration: none; word-break: break-all; font-weight: 500; }
+  .link:hover { text-decoration: underline; }
+
+  /* ============ toast ============ */
+  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(16px); background: #0F172A; color: #F8FAFC; padding: 11px 18px; border-radius: 12px; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 9px; box-shadow: 0 10px 30px -8px rgba(15,23,42,.4); opacity: 0; pointer-events: none; z-index: 100; transition: opacity .25s var(--ease), transform .25s var(--ease); }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.ok svg { color: #34D399; }
+  .toast.err svg { color: #F87171; }
+
+  .tag { display: inline-block; font-size: 10.5px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border-strong); color: var(--text-3); font-family: var(--mono); letter-spacing: .4px; text-transform: uppercase; }
+  .tag.live { color: var(--accent); border-color: rgba(5,150,105,.3); background: var(--ok-soft); }
+
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  @media (max-width: 640px) {
+    .head-actions .btn span.lbl { display: none; }
+    .wrap { padding: 0 12px 50px; }
+    .tab { padding: 8px 12px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <!-- ============ top bar ============ -->
+  <header class="top">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      </div>
+      <div>
+        <h1>workbuddy2api</h1>
+        <div class="sub">Gateway</div>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <span id="svcBadge" class="badge warn"><span class="dot"></span><span id="svcTxt">CONNECTING</span></span>
+    <span id="lbBadge" class="badge"><span>LB: –</span></span>
+    <div class="head-actions">
+      <button class="btn btn-ghost" onclick="promptKey()" aria-label="设置 API Key">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+        <span class="lbl">API KEY</span>
+      </button>
+      <button class="btn btn-ghost" onclick="loadAll()" aria-label="刷新">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.4-6.4M21 12a9 9 0 0 1-15.4 6.4M21 3v6h-6M3 21v-6h6"/></svg>
+        <span class="lbl">刷新</span>
+      </button>
+    </div>
+  </header>
+
+  <div id="keyBanner" class="banner" style="display:none">
+    ⚠ 未设置 API Key，数据请求会被拒绝。
+    <button class="btn btn-sm btn-ghost" onclick="promptKey()">去设置</button>
+  </div>
+
+  <!-- ============ tabs ============ -->
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-tab="chat" onclick="switchTab('chat')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      对话
+    </button>
+    <button class="tab" data-tab="accounts" onclick="switchTab('accounts')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      账号
+    </button>
+    <button class="tab" data-tab="credits" onclick="switchTab('credits')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+      积分
+    </button>
+    <button class="tab" data-tab="settings" onclick="switchTab('settings')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+      设置
+    </button>
+  </div>
+
+  <!-- ============ TAB: 对话 ============ -->
+  <section class="tab-panel active" id="tab-chat">
+    <div class="card">
+      <div class="card-body">
+        <div class="chat-toolbar">
+          <div><label for="t_acct">账号</label><select id="t_acct"></select></div>
+          <div><label for="t_model">模型</label><select id="t_model"><option value="">默认（auto）</option></select></div>
+          <div>
+            <label for="t_think">思考</label>
+            <select id="t_think">
+              <option value="">默认</option><option value="true">开启</option>
+              <option value="minimal">minimal</option><option value="low">low</option>
+              <option value="medium">medium</option><option value="high">high</option>
+              <option value="xhigh">xhigh</option><option value="max">max</option>
+              <option value="disabled">关闭</option>
+            </select>
+          </div>
+        </div>
+        <label for="t_msg">消息</label>
+        <textarea id="t_msg" rows="3" placeholder="输入问题…">你好，用一句话介绍你自己</textarea>
+        <div style="margin-top:12px; display:flex; gap:10px">
+          <button class="btn btn-primary" style="flex:1" onclick="testChat(false)">SEND</button>
+          <button class="btn btn-ghost" style="flex:1" onclick="testChat(true)">STREAM</button>
+          <button class="btn btn-ghost" onclick="stopChat()">STOP</button>
+        </div>
+        <div class="out" id="t_out"><div class="empty">输出区</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TAB: 账号 ============ -->
+  <section class="tab-panel" id="tab-accounts">
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-head">Accounts <span class="count" id="acctCount">0</span></div>
+        <div class="card-body"><div id="acctTable"><div class="empty">加载中…</div></div></div>
+      </div>
+      <div>
+        <div class="card">
+          <div class="card-head">登录新账号</div>
+          <div class="card-body">
+            <div class="method-grid">
+              <button class="btn btn-ghost" onclick="startLogin('internal','wechat')" id="m_wechat">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                微信扫码
+              </button>
+              <button class="btn btn-ghost" onclick="startLogin('internal','phone')" id="m_phone">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>
+                手机号登录
+              </button>
+            </div>
+            <div class="hint" style="margin-top:10px">手机号登录：打开链接后选「手机号 + 验证码」。</div>
+            <div style="margin-top:12px"><label for="l_name">账号名（可选）</label><input id="l_name" placeholder="acct1" autocomplete="off"></div>
+            <div id="l_area" style="display:none; margin-top:12px">
+              <div class="out" id="l_out" style="min-height:0; max-height:170px; overflow:auto;"></div>
+              <div class="qr-wrap" id="l_qr"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">手动填 token</div>
+          <div class="card-body">
+            <div class="row">
+              <div><label for="a_id">ID</label><input id="a_id" placeholder="acct1" autocomplete="off"></div>
+              <div><label for="a_name">名称</label><input id="a_name" placeholder="账号一" autocomplete="off"></div>
+            </div>
+            <label for="a_token">Refresh Token</label>
+            <textarea id="a_token" rows="2" placeholder="eyJhbGciOiJIUzUxMiIs..." style="font-family:var(--mono); font-size:12px"></textarea>
+            <label for="a_home">隔离 HOME（可选）</label>
+            <input id="a_home" placeholder="/var/lib/workbuddy2api/accounts/acct1" style="font-family:var(--mono); font-size:12px" autocomplete="off">
+            <div style="margin-top:14px"><button class="btn btn-ghost" onclick="addAccount()">+ 添加账号</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TAB: 积分 ============ -->
+  <section class="tab-panel" id="tab-credits">
+    <div class="stats">
+      <div class="stat-card"><span class="stat-label">账号数</span><span class="stat-num" id="s_accts">–</span></div>
+      <div class="stat-card"><span class="stat-label">剩余积分</span><span class="stat-num ok" id="s_credits">–</span></div>
+      <div class="stat-card"><span class="stat-label">已用积分</span><span class="stat-num" id="s_used">–</span></div>
+      <div class="stat-card"><span class="stat-label">当前套餐</span><span class="stat-num" id="s_plan" style="font-size:14px">–</span></div>
+    </div>
+    <div class="card">
+      <div class="card-head">Credits — 积分明细</div>
+      <div class="card-body">
+        <div class="row" style="align-items:flex-end">
+          <div style="flex:0 0 220px"><label for="b_acct">账号</label><select id="b_acct"></select></div>
+          <div style="flex:0 0 auto"><button class="btn btn-ghost btn-sm" onclick="loadBilling(true)" style="min-height:36px">REFRESH</button></div>
+        </div>
+        <div id="b_plan" style="margin-top:12px; display:flex; align-items:center; gap:10px; flex-wrap:wrap">
+          <span id="b_planName" class="tag">–</span>
+          <span id="b_expire" class="hint" style="margin:0"></span>
+        </div>
+        <div style="margin-top:12px">
+          <div style="display:flex; justify-content:space-between; font-family:var(--mono); font-size:12px">
+            <span>剩余 <b id="b_left">–</b></span>
+            <span>已用 <b id="b_used">–</b></span>
+            <span>总计 <b id="b_total">–</b></span>
+          </div>
+          <div class="bar"><div class="bar-fill" id="b_bar" style="width:0%"></div></div>
+        </div>
+        <div id="b_res" style="margin-top:12px"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TAB: 设置 ============ -->
+  <section class="tab-panel" id="tab-settings">
+    <div class="card">
+      <div class="card-body">
+        <div class="row">
+          <div style="flex:2"><label for="c_sysprompt">系统提示词</label>
+            <textarea id="c_sysprompt" rows="4" placeholder="You are a helpful AI assistant..."></textarea>
+            <div class="hint">覆盖内置 CodeBuddy 提示词；留空 = 用内置</div>
+          </div>
+          <div style="flex:1">
+            <label for="c_lb">负载均衡</label>
+            <select id="c_lb">
+              <option value="first">first · 固定</option>
+              <option value="round-robin">round-robin · 轮流</option>
+              <option value="least-loaded">least-loaded · 最闲</option>
+            </select>
+            <div style="margin-top:14px"><button class="btn btn-primary" onclick="saveConfig()">保存并重启 CLI</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ============ icons ============ */
+const ICON = {
+  trash: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>',
+  check: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+  x: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+};
+
+/* ============ tab switching ============ */
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + name));
+}
+
+/* ============ api ============ */
+const API = (() => {
+  let key = localStorage.getItem('wb2api_key') || '';
+  return {
+    getKey: () => key,
+    setKey: (k) => { key = k; localStorage.setItem('wb2api_key', k); },
+    async req(method, path, body) {
+      const headers = {};
+      if (key) headers.Authorization = 'Bearer ' + key;
+      if (body !== undefined) headers['Content-Type'] = 'application/json';
+      const r = await fetch(path, { method, headers, body: body !== undefined ? JSON.stringify(body) : undefined });
+      if (r.status === 401) { showBanner(true); throw new Error('401 需要 API Key'); }
+      if (!r.ok) { const t = await r.text().catch(() => ''); throw new Error(r.status + ' ' + t.slice(0, 200)); }
+      const ct = r.headers.get('content-type') || '';
+      return ct.includes('application/json') ? r.json() : r.text();
+    }
+  };
+})();
+
+/* ============ toast / banner ============ */
+let toastTimer = null;
+function toast(msg, ok = true) {
+  const el = document.getElementById('toast');
+  el.innerHTML = (ok ? ICON.check : ICON.x) + '<span>' + esc(msg) + '</span>';
+  el.className = 'toast show ' + (ok ? 'ok' : 'err');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
+}
+function showBanner(on) { document.getElementById('keyBanner').style.display = on ? 'flex' : 'none'; }
+
+function promptKey() {
+  const k = prompt('API Key：', API.getKey());
+  if (k !== null) { API.setKey(k.trim()); showBanner(false); loadAll(); loadConfig(); }
+}
+
+/* ============ loaders ============ */
+async function loadAll() { await Promise.all([loadHealth(), loadAccounts()]); }
+
+async function loadHealth() {
+  try {
+    const h = await API.req('GET', '/v1/health');
+    const b = document.getElementById('svcBadge');
+    b.className = 'badge ' + (h.ok ? 'ok' : 'err');
+    document.getElementById('svcTxt').textContent = h.ok ? 'RUNNING' : 'ERROR';
+    document.getElementById('lbBadge').innerHTML = '<span>LB: ' + esc(h.lb?.strategy || '?') + '</span>';
+    document.querySelectorAll('tr[data-acct]').forEach((row) => {
+      const s = h.accounts[row.dataset.acct];
+      if (!s) return;
+      const dot = row.querySelector('.dot');
+      dot.className = 'dot ' + (s.state === 'ready' ? 'r' : s.state === 'starting' ? 's' : 'o');
+      row.querySelector('[data-st]').textContent = s.state + (s.port ? ' :' + s.port : '');
+    });
+  } catch (e) { /* key not set */ }
+}
+
+async function loadAccounts() {
+  let accs;
+  try { accs = await API.req('GET', '/v1/accounts'); }
+  catch (e) {
+    document.getElementById('acctTable').innerHTML = '<div class="empty">' + esc(e.message) + '</div>';
+    document.getElementById('t_acct').innerHTML = '<option value="">（未认证）</option>';
+    loadModels();
+    return;
+  }
+  const list = accs.accounts || [];
+  document.getElementById('acctCount').textContent = list.length;
+  document.getElementById('s_accts').textContent = list.length;
+  const sel = document.getElementById('t_acct');
+  sel.innerHTML = list.map(a => `<option value="${a.id}">${esc(a.name || a.id)}</option>`).join('') || '<option value="">（无账号）</option>';
+  sel.onchange = loadModels;
+  loadModels();
+
+  const bsel = document.getElementById('b_acct');
+  const prevAcct = bsel.value;
+  bsel.innerHTML = list.map(a => `<option value="${a.id}">${esc(a.name || a.id)}</option>`).join('') || '<option value="">（无账号）</option>';
+  if (prevAcct && [...bsel.options].some(o => o.value === prevAcct)) bsel.value = prevAcct;
+  bsel.onchange = () => loadBilling();
+  if (list.length > 0) loadBilling();
+
+  if (list.length === 0) {
+    document.getElementById('acctTable').innerHTML = '<div class="empty">还没有账号。用右侧「微信扫码」或「手机号登录」添加。</div>';
+    return;
+  }
+  document.getElementById('acctTable').innerHTML = `
+    <table class="tbl">
+      <thead><tr><th>状态</th><th>ID</th><th>名称</th><th>来源</th><th>端口</th><th></th></tr></thead>
+      <tbody>
+      ${list.map(a => `
+        <tr data-acct="${a.id}">
+          <td><span class="stat-line"><span class="dot"></span><span data-st>–</span></span></td>
+          <td class="mono">${esc(a.id)}</td>
+          <td>${esc(a.name || '–')}</td>
+          <td>${a.source === 'desktop' ? '<span class="tag">desktop</span>' : '<span class="tag">manual</span>'}</td>
+          <td class="mono" data-port>–</td>
+          <td style="text-align:right"><button class="btn btn-danger btn-sm" onclick="delAccount('${esc(a.id)}')" aria-label="删除 ${esc(a.id)}">${ICON.trash}</button></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+  loadHealth();
+}
+
+async function loadModels() {
+  const acct = document.getElementById('t_acct').value;
+  const sel = document.getElementById('t_model');
+  const prev = sel.value;
+  try {
+    const m = await API.req('GET', '/v1/models?account=' + encodeURIComponent(acct));
+    const models = m.data || [];
+    const order = [...models.filter(x => x.supports_reasoning !== false), ...models.filter(x => x.supports_reasoning === false)];
+    sel.innerHTML = '<option value="">默认（auto）</option>' + order.map(x =>
+      `<option value="${esc(x.id)}">${esc(x.name || x.id)}${x.supports_reasoning === false ? '（无思考）' : ''}</option>`
+    ).join('');
+    if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
+  } catch (e) {
+    const hint = /401/.test(e.message) ? '⚠ 需要先设置 API Key' : '⚠ ' + esc(e.message);
+    sel.innerHTML = '<option value="">默认（auto）</option><option disabled>' + hint + '</option>';
+  }
+}
+
+/* ============ config ============ */
+async function loadConfig() {
+  try {
+    const c = await API.req('GET', '/v1/config');
+    document.getElementById('c_sysprompt').value = c.systemPrompt || '';
+    document.getElementById('c_lb').value = c.lb || 'first';
+  } catch (e) { /* key not set */ }
+}
+
+async function saveConfig() {
+  try {
+    await API.req('POST', '/v1/config', {
+      systemPrompt: document.getElementById('c_sysprompt').value,
+      lb: document.getElementById('c_lb').value,
+    });
+    toast('已保存，CLI 重启中…');
+    setTimeout(loadAll, 1500);
+  } catch (e) { toast(e.message, false); }
+}
+
+/* ============ accounts ============ */
+async function addAccount() {
+  const id = document.getElementById('a_id').value.trim();
+  if (!id) return toast('请填写账号 ID', false);
+  const tok = document.getElementById('a_token').value.trim();
+  if (!tok) return toast('请填写 Refresh Token', false);
+  const body = { id, name: document.getElementById('a_name').value.trim() || id, source: 'manual', refreshToken: tok };
+  const home = document.getElementById('a_home').value.trim();
+  if (home) body.home = home;
+  try {
+    await API.req('POST', '/v1/accounts', body);
+    ['a_id','a_name','a_token','a_home'].forEach(id => document.getElementById(id).value = '');
+    toast('账号 ' + id + ' 已添加');
+    loadAccounts();
+  } catch (e) { toast('添加失败: ' + e.message, false); }
+}
+
+async function delAccount(id) {
+  if (!confirm('删除账号 ' + id + '？此操作会移除其 CLI 与凭据。')) return;
+  try { await API.req('DELETE', '/v1/accounts/' + id); toast('已删除 ' + id); loadAccounts(); }
+  catch (e) { toast('删除失败: ' + e.message, false); }
+}
+
+/* ============ credits / 积分 ============ */
+function fmtNum(n) { return (Number(n) || 0).toLocaleString('zh-CN', { maximumFractionDigits: 1 }); }
+function fmtDate(ms) {
+  if (!ms) return '';
+  const d = new Date(ms); const pad = (x) => String(x).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+async function loadBilling(force) {
+  const acct = document.getElementById('b_acct').value;
+  if (!acct) return;
+  if (!force && document.getElementById('b_total').textContent !== '–') return;
+  try {
+    const d = await API.req('GET', '/v1/billing?account=' + encodeURIComponent(acct));
+    document.getElementById('b_planName').textContent = d.plan.name || '免费版';
+    document.getElementById('b_expire').textContent =
+      (d.plan.expireAt ? '到期 ' + fmtDate(d.plan.expireAt) : '') + (d.plan.renewFlag === 1 ? ' · 自动续费' : '');
+    document.getElementById('b_left').textContent = fmtNum(d.usage.left);
+    document.getElementById('b_used').textContent = fmtNum(d.usage.used);
+    document.getElementById('b_total').textContent = fmtNum(d.usage.total);
+    document.getElementById('s_credits').textContent = fmtNum(d.usage.left);
+    document.getElementById('s_used').textContent = fmtNum(d.usage.used);
+    document.getElementById('s_plan').textContent = d.plan.name || '免费版';
+    const pct = d.usage.total > 0 ? Math.min(100, (d.usage.left / d.usage.total) * 100) : 0;
+    document.getElementById('b_bar').style.width = pct.toFixed(1) + '%';
+    document.getElementById('b_res').innerHTML = (d.resources || []).map(r => `
+      <div class="res-row">
+        <span>${esc(r.name)}${r.isDaily ? '（每日）' : ''}</span>
+        <span class="mono">${fmtNum(r.left)} / ${fmtNum(r.total)}${r.expireAt ? ' · ' + fmtDate(r.expireAt) : ''}</span>
+      </div>`).join('') || '<div class="empty">无积分资源</div>';
+  } catch (e) {
+    document.getElementById('b_res').innerHTML = '<div class="empty" style="color:var(--danger)">' + esc(e.message) + '</div>';
+  }
+}
+
+/* ============ login (微信扫码 / 手机号 only) ============ */
+let loginPollTimer = null;
+async function startLogin(method, mode) {
+  const name = document.getElementById('l_name').value.trim();
+  const area = document.getElementById('l_area');
+  const out = document.getElementById('l_out');
+  document.getElementById('m_wechat').className = 'btn btn-ghost';
+  document.getElementById('m_phone').className = 'btn btn-ghost';
+  document.getElementById('m_' + mode).className = 'btn btn-ghost active-method';
+  area.style.display = 'block';
+  out.innerHTML = '<span class="spin"></span> 启动登录…';
+  document.getElementById('l_qr').innerHTML = '';
+  try {
+    const s = await API.req('POST', '/v1/auth/login', { method, name: name || null });
+    const title = mode === 'phone' ? '手机号登录' : '微信扫码登录';
+    out.innerHTML = '<b>' + title + '</b>：在<b>新窗口或手机</b>打开下方链接'
+      + (mode === 'phone' ? '，然后选择「手机号 + 验证码」' : '，用微信扫码') + '，完成后本页自动识别：<br>'
+      + '<a class="link" href="' + esc(s.authUrl) + '" target="_blank" rel="noopener">' + esc(s.authUrl) + '</a>';
+    if (mode === 'wechat') {
+      document.getElementById('l_qr').innerHTML =
+        '<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(s.authUrl)
+        + '" alt="微信登录二维码" width="200" height="200">';
+    }
+    pollLogin(s.loginId, out);
+  } catch (e) {
+    out.innerHTML = '<span style="color:var(--danger)">启动登录失败：' + esc(e.message) + '</span>';
+  }
+}
+
+function pollLogin(loginId, out) {
+  if (loginPollTimer) clearInterval(loginPollTimer);
+  loginPollTimer = setInterval(async () => {
+    try {
+      const s = await API.req('GET', '/v1/auth/login/' + loginId);
+      if (s.status === 'authenticated') {
+        clearInterval(loginPollTimer);
+        out.innerHTML = '✅ 登录成功！账号 <b>' + esc(s.accountId) + '</b> 已添加。';
+        document.getElementById('l_qr').innerHTML = '';
+        loadAccounts();
+      } else if (s.status === 'expired') {
+        clearInterval(loginPollTimer);
+        out.innerHTML = '⏰ 登录超时（10 分钟），请重新开始。';
+      }
+    } catch (e) { /* keep polling */ }
+  }, 3000);
+}
+
+/* ============ chat test ============ */
+let abortCtrl = null;
+async function testChat(stream) {
+  const msg = document.getElementById('t_msg').value.trim();
+  if (!msg) return toast('请输入消息', false);
+  const body = { stream, messages: [{ role: 'user', content: msg }] };
+  const model = document.getElementById('t_model').value.trim();
+  const think = document.getElementById('t_think').value;
+  const acct = document.getElementById('t_acct').value;
+  if (model) body.model = model;
+  if (think !== '') body.thinking = think === 'true' ? true : think;
+  const headers = { 'X-Account-Id': acct, 'Content-Type': 'application/json' };
+  if (API.getKey()) headers.Authorization = 'Bearer ' + API.getKey();
+
+  const out = document.getElementById('t_out');
+  out.innerHTML = '<span class="spin"></span> 等待响应…';
+  abortCtrl = new AbortController();
+  try {
+    const r = await fetch('/v1/chat/completions', { method: 'POST', headers, body: JSON.stringify(body), signal: abortCtrl.signal });
+    if (!r.ok) { const t = await r.text(); throw new Error(r.status + ' ' + t.slice(0, 300)); }
+    if (!stream) {
+      const d = await r.json();
+      const m = d.choices?.[0]?.message || {};
+      out.innerHTML = '';
+      if (m.reasoning_content) out.innerHTML += '<div class="think">' + esc(m.reasoning_content) + '</div>';
+      out.innerHTML += '<div class="ans">' + esc(m.content || '') + '</div>';
+      if (d.session_id) out.innerHTML += '<div class="think" style="margin-top:8px">session: ' + esc(d.session_id) + '</div>';
+      return;
+    }
+    const reader = r.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    out.innerHTML = '';
+    const thinkEl = document.createElement('div'); thinkEl.className = 'think';
+    const ansEl = document.createElement('div'); ansEl.className = 'ans cursor';
+    out.append(thinkEl, ansEl);
+    let haveThink = false;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let idx;
+      while ((idx = buf.indexOf('\n\n')) !== -1) {
+        const frame = buf.slice(0, idx); buf = buf.slice(idx + 2);
+        let data = '';
+        for (const line of frame.split('\n')) if (line.startsWith('data:')) data = line.slice(5).trim();
+        if (!data || data === '[DONE]') continue;
+        let d; try { d = JSON.parse(data); } catch { continue; }
+        const delta = d.choices?.[0]?.delta || {};
+        if (delta.reasoning_content) { haveThink = true; thinkEl.textContent += delta.reasoning_content; }
+        if (delta.content) ansEl.textContent += delta.content;
+      }
+    }
+    ansEl.classList.remove('cursor');
+    if (!haveThink) thinkEl.style.display = 'none';
+    if (!ansEl.textContent) ansEl.textContent = '（无正文输出）';
+  } catch (e) {
+    if (e.name === 'AbortError') out.innerHTML += '<div class="think">⏹ 已停止</div>';
+    else out.innerHTML = '<span style="color:var(--danger)">' + esc(e.message) + '</span>';
+  }
+}
+function stopChat() { if (abortCtrl) abortCtrl.abort(); }
+
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+
+document.addEventListener('DOMContentLoaded', () => {
+  showBanner(!API.getKey());
+  loadAll();
+  loadConfig();
+  setInterval(loadHealth, 5000);
+});
+</script>
+</body>
+</html>

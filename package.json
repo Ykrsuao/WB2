@@ -1,0 +1,14 @@
+{
+  "name": "workbuddy2api",
+  "version": "0.1.0",
+  "description": "Expose Tencent WorkBuddy (CodeBuddy desktop) as a local OpenAI-compatible REST API by driving its bundled agent-cli gateway.",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18.20.8"
+  },
+  "license": "MIT"
+}
