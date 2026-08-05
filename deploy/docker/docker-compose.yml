@@ -1,0 +1,36 @@
+# workbuddy2api 部署编排
+#
+# 用法：
+#   1. 准备账号：在 Windows 上运行 `node deploy/docker/export-accounts.js > data/accounts.json`
+#      （或手动填写带 refreshToken 的 manual 账号）
+#   2. 复制 .env.example 为 .env 并设置 WORKBUDDY2API_API_KEY
+#   3. docker compose up -d --build
+#
+# 注意：/data 目录会持久化 accounts.json；面板在容器内写的设置会存到容器
+# 文件系统（非持久化），重启会丢失——请通过 .env 管理系统设置。
+
+services:
+  workbuddy2api:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    image: workbuddy2api:latest
+    container_name: workbuddy2api
+    restart: unless-stopped
+    ports:
+      - "8787:8787"
+    environment:
+      # 必填：API Key（客户端 Bearer 鉴权）
+      WORKBUDDY2API_API_KEY: ${WORKBUDDY2API_API_KEY:-}
+      # 默认模型 / 思考档位 / 系统提示词（可选）
+      WORKBUDDY2API_MODEL: ${WORKBUDDY2API_MODEL:-glm-5.1}
+      WORKBUDDY2API_EFFORT: ${WORKBUDDY2API_EFFORT:-high}
+      WORKBUDDY2API_SYSTEM_PROMPT: ${WORKBUDDY2API_SYSTEM_PROMPT:-}
+      # 多账号负载均衡：first / round-robin / least-loaded
+      WORKBUDDY2API_LB: ${WORKBUDDY2API_LB:-round-robin}
+      # 后端地址（默认官方，一般不用改）
+      WORKBUDDY2API_ENDPOINT: ${WORKBUDDY2API_ENDPOINT:-https://copilot.tencent.com}
+      # 账号文件（挂载卷内）
+      WORKBUDDY2API_ACCOUNTS_FILE: /data/accounts.json
+    volumes:
+      - ./data:/data

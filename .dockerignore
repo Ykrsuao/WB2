@@ -1,0 +1,18 @@
+# 构建上下文排除：只打包运行所需
+.git
+_tools
+_src
+_app_asar
+_acct_test_home
+_login_test_home
+_docker_test
+node_modules
+accounts.json
+.env
+snake.html
+codebuddy-api-openapi.json
+REVERSE_REPORT.md
+*.log
+deploy/ubuntu
+_playwright-mcp
+.spec-workflow

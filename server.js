@@ -336,6 +336,28 @@ async function handleRequest(req, res) {
     } catch (e) {
       return sendError(res, e.statusCode || 400, 'BAD_REQUEST', e.message);
     }
+    // request log: one-line summary by default; full body dump only when
+    // WORKBUDDY2API_DEBUG=1 (helps diagnosing Claude Code interop issues)
+    const dbg = process.env.WORKBUDDY2API_DEBUG;
+    if (dbg !== '0') {
+      const msgs = Array.isArray(body.messages) ? body.messages : [];
+      const roles = msgs.map((m) => `${m.role}:${Array.isArray(m.content) ? m.content.map((b) => b.type).join('+') : (typeof m.content === 'string' ? `str(${m.content.length})` : typeof m.content)}`).join(' | ');
+      console.log(`[req] /v1/messages model=${body.model} max_tokens=${body.max_tokens} stream=${!!body.stream} thinking=${JSON.stringify(body.thinking)} tools=${Array.isArray(body.tools) ? body.tools.length : 0} sys=${typeof body.system === 'string' ? body.system.length : Array.isArray(body.system) ? body.system.map((b) => (b.text || '').length).reduce((a, b) => a + b, 0) : 0}`);
+      console.log(`[req]   messages: ${roles}`);
+      if (dbg === '1') {
+        try {
+          const fs = require('fs');
+          const path = require('path');
+          const dumpDir = path.join(__dirname, '_tools', 'req_dumps');
+          fs.mkdirSync(dumpDir, { recursive: true });
+          const fname = `req-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.json`;
+          fs.writeFileSync(path.join(dumpDir, fname), JSON.stringify(body, null, 2), 'utf8');
+          console.log(`[req]   body dumped to _tools/req_dumps/${fname}`);
+        } catch (e) {
+          console.log('[req] dump error:', e.message);
+        }
+      }
+    }
     const requestedId = req.headers['x-account-id'] || (body.metadata && body.metadata.account);
     const account = lb.pick(requestedId);
     if (!account) return sendError(res, 404, 'ACCOUNT_NOT_FOUND', 'no enabled account available');

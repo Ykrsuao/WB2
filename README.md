@@ -170,5 +170,12 @@ WORKBUDDY2API_SYSTEM_PROMPT=You are a helpful AI assistant. When asked who you a
 
 ## 依赖
 
-零外部依赖，仅 Node.js 内置模块（>= 18）。Ubuntu 部署见
-[`deploy/ubuntu/README.md`](deploy/ubuntu/README.md)。
+零外部依赖，仅 Node.js 内置模块（>= 18）。
+
+## 服务器部署
+
+- **Docker（推荐，纯 API 单容器）**：见 [`deploy/docker/README.md`](deploy/docker/README.md)
+  —— `docker compose up -d --build` 即跑；账号用 `deploy/docker/export-accounts.js` 从本机导出。
+  镜像无 CLI，仅直连引擎。
+- **Ubuntu 裸机**（systemd + nginx TLS + 扫码登录）：见
+  [`deploy/ubuntu/README.md`](deploy/ubuntu/README.md)。
