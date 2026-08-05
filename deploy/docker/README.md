@@ -1,25 +1,23 @@
 # Docker 部署（纯 LLM API）
 
-把 workbuddy2api 打包成单容器运行。**容器内无 CLI、无 agent 工具**——对话/模型/
-工具调用全部走直连引擎，与本地运行行为一致。
+把 workbuddy2api 打包成单容器运行。**对话/模型/工具调用全部走直连引擎**，与本地
+运行行为一致；镜像内附带 CodeBuddy CLI（`@tencent-ai/codebuddy-code`）**仅供
+Web 面板的扫码/手机号登录流程使用**，日常对话不会 spawn 任何 CLI 进程。
 
 ## 文件清单
 
 | 文件 | 说明 |
 |---|---|
-| `Dockerfile` | node:20-alpine，只复制运行所需（server.js + lib + web） |
+| `Dockerfile` | node:20-slim + CodeBuddy CLI（登录用）；只复制运行所需 |
 | `docker-compose.yml` | 端口、环境变量、数据卷编排 |
-| `export-accounts.js` | 在 Windows/本机运行：导出 Docker 可用的账号文件 |
+| `entrypoint.sh` | 启动时自动解析 CLI 路径（bin 可能是 `codebuddy` 或 `cbc`） |
+| `export-accounts.js` | 可选：在 Windows 上导出账号文件（不想面板登录时用） |
 | `.dockerignore` | 构建上下文排除项（源码、密钥、测试脚本） |
 
 ## 快速开始
 
 ```bash
-# 1. 准备账号文件（在装有 WorkBuddy 的 Windows 机器上执行）
-node deploy/docker/export-accounts.js --out data/accounts.json
-
-# 2. 配置环境变量（API Key 必填）
-#    复制一份 .env 示例：
+# 1. 配置环境变量（API Key 必填）
 cat > .env <<'EOF'
 WORKBUDDY2API_API_KEY=换成你的密钥
 WORKBUDDY2API_MODEL=glm-5.1
@@ -27,35 +25,38 @@ WORKBUDDY2API_EFFORT=high
 WORKBUDDY2API_LB=round-robin
 EOF
 
-# 3. 构建并启动
+# 2. 构建并启动
 docker compose up -d --build
 
-# 4. 验证
+# 3. 验证
 curl http://127.0.0.1:8787/v1/health \
   -H "Authorization: Bearer 换成你的密钥"
 # → {"ok":true,"engine":"direct","cli":{},"accounts":2,...}
 ```
 
-## 账号管理
+启动日志应看到：`[entrypoint] CodeBuddy CLI: ... — 用于面板登录`。
 
-容器内没有 WorkBuddy 桌面会话，因此**必须使用 manual 账号**（携带 refreshToken，
-服务自动经认证 API 刷新 accessToken）。
+## 账号管理（两种方式，任选）
 
-三种获取方式：
+### 方式 A：Web 面板扫码/手机号登录（推荐，无需传文件）
 
-1. **从本机导出（推荐）**：`node deploy/docker/export-accounts.js --out data/accounts.json`
-   —— 自动把现有 manual 账号原样导出、桌面账号从会话文件提取 refreshToken 转成 manual。
+1. 浏览器打开 `http://<服务器IP>:8787/panel`，填 API Key 进入
+2. 账号页 →「登录新账号」→ 微信扫码 或 手机号登录
+3. 登录完成自动注册账号，持久化到 `data/accounts.json`（挂载卷）
 
-2. **手动编写** `data/accounts.json`：
-   ```json
-   { "accounts": [ { "id": "myacct", "name": "我的账号",
-                     "source": "manual", "refreshToken": "<从 CodeBuddy 会话 .info 提取>" } ] }
-   ```
+> 登录流程在容器内用隔离 HOME 短暂拉起 CLI，完成即关闭；对话请求不受影响。
 
-3. **面板添加**：登录 Web 面板 → 账号页 → "添加账号" → 粘贴 refreshToken。
+### 方式 B：从本机导出账号
 
-> ⚠️ 容器内 Web 面板的"扫码/手机号登录"不可用（依赖 CLI 二进制，纯 API 镜像不含）。
-> 需要扫码登录请在 Windows 本机完成后再导出账号。
+```bash
+# 在装有 WorkBuddy 的 Windows 机器上执行
+node deploy/docker/export-accounts.js --out data/accounts.json
+# 把 data/accounts.json 传到服务器，与 compose 同目录的 data/ 下
+```
+
+### 方式 C：手动添加
+
+登录面板 → 账号页 →「添加账号」→ 粘贴 refreshToken。
 
 ## 环境变量
 
@@ -67,6 +68,8 @@ curl http://127.0.0.1:8787/v1/health \
 | `WORKBUDDY2API_LB` | `round-robin` | `first` / `round-robin` / `least-loaded` |
 | `WORKBUDDY2API_ENDPOINT` | `https://copilot.tencent.com` | 后端直连地址 |
 | `WORKBUDDY2API_ACCOUNTS_FILE` | `/data/accounts.json` | 账号文件（容器内固定，勿改） |
+
+CLI 路径由 `entrypoint.sh` 自动解析（`WORKBUDDY2API_CLI_DIR/BIN`），一般无需手动设置。
 
 ## 客户端接入
 
@@ -85,7 +88,7 @@ export ANTHROPIC_MODEL="glm-5.1"
 
 ## 数据与升级
 
-- **账号文件**：`data/accounts.json`（挂载卷，容器重建不丢失）
+- **账号文件**：`data/accounts.json`（挂载卷，容器重建不丢失，面板登录的账号也在里面）
 - **系统设置**：通过 `.env` 管理（面板在容器内改的设置不持久化）
 - **升级**：`git pull && docker compose up -d --build`
 
@@ -100,7 +103,10 @@ export ANTHROPIC_MODEL="glm-5.1"
 
 **健康检查返回 401？** `/v1/health` 也要求鉴权，curl 记得带 `Authorization` 头。
 
+**面板登录失败？** 检查启动日志有没有 `未找到 CodeBuddy CLI` 警告；确认容器能访问
+`registry.npmjs.org`（构建时已安装 CLI）。
+
 **账户额度看不到？** `GET /v1/billing` 需要账号有有效 token，检查账号 refreshToken 是否过期。
 
-**与 Ubuntu 裸机部署的区别？** `deploy/ubuntu/` 是裸机 + systemd 方案（会安装 Linux
-版 CLI 以支持扫码登录和 agent 端点）；Docker 方案更轻、无 CLI，适合纯对话/工具调用场景。
+**与 Ubuntu 裸机部署的区别？** `deploy/ubuntu/` 是裸机 + systemd 方案；Docker 方案
+更轻、升级方便，同样支持面板扫码登录。
