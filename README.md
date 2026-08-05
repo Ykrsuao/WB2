@@ -122,6 +122,9 @@ curl -N http://127.0.0.1:8787/v1/messages `
 | `POST /v1/chat/completions` | OpenAI 兼容对话（流式/非流式/思考） |
 | `POST /v1/messages` | Anthropic 兼容对话（Claude Code 等） |
 | `GET /v1/billing` | 账号积分/套餐用量 |
+| `GET /v1/checkin` | 每日签到状态（各账号 + 自动调度） |
+| `POST /v1/checkin` | 立即对所有账号签到 |
+| `POST /v1/checkin/{id}` | 立即对指定账号签到 |
 | `GET /v1/accounts` / `POST` / `DELETE /v1/accounts/:id` | 账号管理 |
 | `GET/POST /v1/config` | 系统设置（提示词、负载均衡等） |
 | `POST /v1/auth/login` + `GET /v1/auth/login/:id` | Web 面板扫码/手机号登录 |
@@ -141,7 +144,19 @@ curl -N http://127.0.0.1:8787/v1/messages `
 | `WORKBUDDY2API_SYSTEM_PROMPT` | 无 | 替换系统提示词（见下） |
 | `WORKBUDDY2API_ENDPOINT` | `https://copilot.tencent.com` | 后端直连地址 |
 | `WORKBUDDY2API_LB` | `first` | 负载均衡策略（`first`/`round-robin`/`least-loaded`） |
+| `WORKBUDDY2API_CHECKIN` | `1` | 每日自动签到开关（`0` 关闭） |
 | `WORKBUDDY2API_CLI_DIR` | WorkBuddy 内置 | agent-cli 目录（仅 agent 端点用） |
+
+## 每日自动签到
+
+服务内置定时任务，每天对每个启用账号自动签到一次（每 30 分钟检查，服务重启
+当天自动补签，已签到自动跳过）：
+
+- 签到 API 逆向自桌面 App：`POST /v2/billing/meter/daily-checkin`（每账号每日 100 积分）
+- `GET /v1/checkin` 查看各账号签到状态（连续天数/当日积分）
+- `POST /v1/checkin` 或 `POST /v1/checkin/{accountId}` 手动触发
+- Web 面板「积分」页有签到卡片：状态展示 + 一键签到按钮
+- 关闭自动签到：`WORKBUDDY2API_CHECKIN=0`
 
 ## 多账号 + 负载均衡
 

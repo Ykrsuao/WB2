@@ -330,6 +330,17 @@
       <div class="stat-card"><span class="stat-label">当前套餐</span><span class="stat-num" id="s_plan" style="font-size:14px">–</span></div>
     </div>
     <div class="card">
+      <div class="card-head">每日签到 — 自动签到</div>
+      <div class="card-body">
+        <div class="row" style="align-items:flex-end">
+          <div style="flex:0 0 auto"><span id="ck_auto" class="tag">自动: 开启</span></div>
+          <div style="flex:0 0 auto"><span id="ck_today" class="hint" style="margin:0"></span></div>
+          <div style="flex:0 0 auto; margin-left:auto"><button class="btn btn-primary btn-sm" onclick="claimCheckin()">立即签到</button></div>
+        </div>
+        <div id="ck_res" style="margin-top:12px"></div>
+      </div>
+    </div>
+    <div class="card">
       <div class="card-head">Credits — 积分明细</div>
       <div class="card-body">
         <div class="row" style="align-items:flex-end">
@@ -391,6 +402,9 @@ const ICON = {
 function switchTab(name) {
   document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + name));
+  if (name === 'credits') { loadCheckin(); loadBilling(); }
+  if (name === 'accounts') loadAccounts();
+  if (name === 'settings') loadConfig();
 }
 
 /* ============ api ============ */
@@ -586,6 +600,47 @@ async function loadBilling(force) {
       </div>`).join('') || '<div class="empty">无积分资源</div>';
   } catch (e) {
     document.getElementById('b_res').innerHTML = '<div class="empty" style="color:var(--danger)">' + esc(e.message) + '</div>';
+  }
+}
+
+/* ============ checkin (每日签到) ============ */
+async function loadCheckin() {
+  try {
+    const d = await API.req('GET', '/v1/checkin');
+    const auto = d.auto || {};
+    document.getElementById('ck_auto').textContent = '自动: ' + (auto.enabled ? '开启' : '关闭');
+    document.getElementById('ck_today').textContent = '今天 ' + (auto.today || '');
+    const rows = (d.accounts || []).map(a => {
+      const s = a.status || {};
+      const checked = s.today_checked_in ? '✅ 已签到' : '⏳ 未签到';
+      const extra = s.streak_days ? `连续 ${s.streak_days} 天` : '';
+      const credit = s.today_credit ? ` · 今日 +${s.today_credit}` : '';
+      const err = a.error ? `<span style="color:var(--danger)">${esc(a.error)}</span>` : '';
+      return `<div class="res-row">
+        <span>${esc(a.name || a.accountId)}${extra ? ' <span class="hint">' + extra + '</span>' : ''}</span>
+        <span class="mono">${checked}${credit}${err}</span>
+      </div>`;
+    }).join('') || '<div class="empty">无账号</div>';
+    document.getElementById('ck_res').innerHTML = rows;
+  } catch (e) {
+    document.getElementById('ck_res').innerHTML = '<div class="empty" style="color:var(--danger)">' + esc(e.message) + '</div>';
+  }
+}
+
+async function claimCheckin() {
+  const btn = document.querySelector('#tab-credits .btn-primary');
+  const old = btn.textContent;
+  btn.textContent = '签到中...';
+  btn.disabled = true;
+  try {
+    await API.req('POST', '/v1/checkin');
+    await loadCheckin();
+    toast('签到完成');
+  } catch (e) {
+    toast('签到失败: ' + e.message);
+  } finally {
+    btn.textContent = old;
+    btn.disabled = false;
   }
 }
 

@@ -57,6 +57,7 @@ const { LoginManager } = require('./lib/login');
 const { loadSession } = require('./lib/auth');
 const { getConfig, applyPatch } = require('./lib/config');
 const { getBilling } = require('./lib/billing');
+const { getCheckinStatus, claimDailyCheckin, createCheckinScheduler, isCheckedIn } = require('./lib/checkin');
 const {
   handleChatCompletions,
   handleAgentRun,
@@ -126,6 +127,16 @@ function authorized(req) {
 function sendUnauthorized(res) {
   sendError(res, 401, 'UNAUTHORIZED', 'missing or invalid API key');
 }
+
+// ---- daily check-in auto scheduler (每日自动签到) ----
+const checkinScheduler = createCheckinScheduler({
+  accounts,
+  resolveAuth: resolveAccountAuth,
+  endpoint: process.env.WORKBUDDY2API_ENDPOINT,
+  enabled: process.env.WORKBUDDY2API_CHECKIN !== '0',
+  onLog: (m) => console.log(m),
+});
+checkinScheduler.start();
 
 async function handleRequest(req, res) {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
@@ -281,6 +292,66 @@ async function handleRequest(req, res) {
       return sendJson(res, 200, { accountId: account.id, ...billing });
     } catch (e) {
       return sendError(res, e.statusCode || 502, 'BILLING_FAILED', e.message);
+    }
+  }
+
+  // ---- /v1/checkin (每日签到) ----
+  if (pathname === '/v1/checkin' && method === 'GET') {
+    const out = { auto: checkinScheduler.state(), accounts: [] };
+    // resolve to live records (accounts.list() strips tokens)
+    const list = accounts.list().map((a) => accounts.get(a.id) || a);
+    for (const acc of list) {
+      try {
+        const { token, userId } = await resolveAccountAuth(acc);
+        let status = null;
+        if (token && userId) {
+          const live = accounts.get(acc.id) || acc;
+          status = await getCheckinStatus({
+            endpoint: process.env.WORKBUDDY2API_ENDPOINT || 'https://copilot.tencent.com',
+            token,
+            userId,
+            enterpriseId: live.enterpriseId || null,
+            domain: live.domain || null,
+          });
+        }
+        out.accounts.push({ accountId: acc.id, name: acc.name, source: acc.source, status });
+      } catch (e) {
+        out.accounts.push({ accountId: acc.id, name: acc.name, source: acc.source, error: e.message });
+      }
+    }
+    return sendJson(res, 200, out);
+  }
+  if (pathname === '/v1/checkin' && method === 'POST') {
+    await checkinScheduler.runNow();
+    return sendJson(res, 200, checkinScheduler.state());
+  }
+  const cim = pathname.match(/^\/v1\/checkin\/([^/]+)$/);
+  if (cim && method === 'POST') {
+    const acc = accounts.get(decodeURIComponent(cim[1]));
+    if (!acc) return sendError(res, 404, 'ACCOUNT_NOT_FOUND', `no such account: ${cim[1]}`);
+    const { token, userId } = await resolveAccountAuth(acc);
+    if (!token || !userId) return sendError(res, 401, 'NO_TOKEN', 'account has no valid token');
+    try {
+      const live = accounts.get(acc.id) || acc;
+      const status = await getCheckinStatus({
+        endpoint: process.env.WORKBUDDY2API_ENDPOINT || 'https://copilot.tencent.com',
+        token,
+        userId,
+        enterpriseId: live.enterpriseId || null,
+        domain: live.domain || null,
+      });
+      const already = isCheckedIn(status);
+      if (already) return sendJson(res, 200, { ok: true, already: true, status });
+      const reward = await claimDailyCheckin({
+        endpoint: process.env.WORKBUDDY2API_ENDPOINT || 'https://copilot.tencent.com',
+        token,
+        userId,
+        enterpriseId: live.enterpriseId || null,
+        domain: live.domain || null,
+      });
+      return sendJson(res, 200, { ok: true, already: false, reward, status });
+    } catch (e) {
+      return sendError(res, e.statusCode || 502, 'CHECKIN_FAILED', e.message);
     }
   }
 
