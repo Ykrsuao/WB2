@@ -154,6 +154,18 @@ async function handleRequest(req, res) {
       return sendError(res, 404, 'NOT_FOUND', 'panel not bundled');
     }
   }
+  // Static vendor asset: pure-JS QR generator (panel renders the login QR
+  // locally; no external image service involved).
+  if (pathname === '/vendor/qrcode.js' && method === 'GET') {
+    const qrPath = path.join(__dirname, 'web', 'qrcode.js');
+    try {
+      const js = fs.readFileSync(qrPath);
+      res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
+      return res.end(js);
+    } catch {
+      return sendError(res, 404, 'NOT_FOUND', 'qrcode.js not bundled');
+    }
+  }
   if (pathname === '/favicon.ico') {
     res.writeHead(204);
     return res.end();
