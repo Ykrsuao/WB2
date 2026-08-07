@@ -29,6 +29,8 @@ services:
       WORKBUDDY2API_LB: ${WORKBUDDY2API_LB:-round-robin}
       # 后端地址（默认官方，一般不用改）
       WORKBUDDY2API_ENDPOINT: ${WORKBUDDY2API_ENDPOINT:-https://copilot.tencent.com}
+      # 调试日志（0 关 / 1 开完整请求 dump，排查问题用）
+      WORKBUDDY2API_DEBUG: ${WORKBUDDY2API_DEBUG:-0}
       # 账号文件（挂载卷内）
       WORKBUDDY2API_ACCOUNTS_FILE: /data/accounts.json
     volumes:
