@@ -64,7 +64,7 @@ const {
   handleAgentRunStream,
   gatewayRequest,
 } = require('./lib/chat');
-const { handleMessages } = require('./lib/anthropic');
+const { handleMessages, handleResponses } = require('./lib/anthropic');
 const { readJsonBody, sendJson, sendError } = require('./lib/util');
 const { modelsList, findModel, updateLive, isLiveFresh, refreshLiveFromCli, mergedModels } = require('./lib/models');
 
@@ -444,6 +444,27 @@ async function handleRequest(req, res) {
     if (!account) return sendError(res, 404, 'ACCOUNT_NOT_FOUND', 'no enabled account available');
     const { token, userId } = await resolveAccountAuth(account);
     return handleMessages(null, req, res, body, {
+      id: account.id,
+      token,
+      userId,
+      endpoint: process.env.WORKBUDDY2API_ENDPOINT,
+      knownModels: knownModels(),
+    });
+  }
+
+  // ---- /v1/responses (Anthropic Responses API, newer Claude Code) ----
+  if (pathname === '/v1/responses' && method === 'POST') {
+    let body;
+    try {
+      body = await readJsonBody(req);
+    } catch (e) {
+      return sendError(res, e.statusCode || 400, 'BAD_REQUEST', e.message);
+    }
+    const requestedId = req.headers['x-account-id'] || (body.metadata && body.metadata.account);
+    const account = lb.pick(requestedId);
+    if (!account) return sendError(res, 404, 'ACCOUNT_NOT_FOUND', 'no enabled account available');
+    const { token, userId } = await resolveAccountAuth(account);
+    return handleResponses(null, req, res, body, {
       id: account.id,
       token,
       userId,
